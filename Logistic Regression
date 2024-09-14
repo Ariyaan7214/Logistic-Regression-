@@ -1,0 +1,34 @@
+!pip install pyspark
+from pyspark.sql import SparkSession as ss
+spark = ss.builder.appName('logregconsult').getOrCreate()
+from google.colab import drive
+drive.mount('/content/drive')
+data = spark.read.csv('/content/drive/MyDrive/customer_churn (1).csv',inferSchema=True,header=True)
+data.show()
+data.printSchema()
+data.describe().show()
+data.columns
+from pyspark.ml.feature import VectorAssembler as va
+assembler = va(inputCols=['Age',
+               'Total_Purchase',
+               'Account_Manager',
+               'Years',
+               'Num_Sites'],outputCol='features')
+output = assembler.transform(data)
+output.select('features').show()
+finaldata = output.select("features","churn")
+finaldata.show()
+trainchurn,testchurn = finaldata.randomSplit([0.70,0.30])
+trainchurn.describe().show()
+testchurn.describe().show()
+from pyspark.ml.classification import LogisticRegression as lr
+lrchurn = lr(labelCol='churn')
+fittedchurnmodel = lrchurn.fit(trainchurn)
+predandlabels = fittedchurnmodel.evaluate(testchurn)
+predandlabels.predictions.show()
+from pyspark.ml.evaluation import BinaryClassificationEvaluator as bce
+churneval = bce(rawPredictionCol='prediction',
+                labelCol='churn')
+result = churneval.evaluate(predandlabels.predictions)
+result
+
